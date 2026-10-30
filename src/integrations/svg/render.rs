@@ -90,7 +90,7 @@ pub fn extract_world_svg_assets(
                     asset_anchor: *asset_anchor,
                     alpha: asset.alpha,
                 })
-                .insert(TemporaryRenderEntity);
+                .insert(TemporaryRenderEntity::default());
             n_svgs += 1;
         }
     }
@@ -156,9 +156,12 @@ pub fn extract_ui_svg_assets(
                     ui_node: *ui_node,
                     ui_stack_index: ui_stack_index.0,
                     alpha: asset.alpha,
-                    clip: calc_clip.map(|c| c.clip),
+                    clip: match calc_clip {
+                        Some(CalculatedClip::Rects(rects)) => rects.first().map(|clip| clip.rect),
+                        _ => None,
+                    },
                 })
-                .insert(TemporaryRenderEntity);
+                .insert(TemporaryRenderEntity::default());
             n_svgs += 1;
         }
     }

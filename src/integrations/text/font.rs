@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use bevy::{prelude::*, reflect::TypePath, render::render_asset::RenderAsset};
 use parley::{
-    FontSettings, FontStyle, FontVariation, Layout, PositionedLayoutItem, RangedBuilder,
+    FontStyle, FontVariation, FontVariations, Layout, PositionedLayoutItem, RangedBuilder,
     StyleProperty,
 };
 use vello::{
@@ -69,17 +69,13 @@ impl VelloFont {
                 apply_font_styles(&mut builder, style);
                 apply_variable_axes(&mut builder, &style.font_axes);
 
-                builder.push_default(StyleProperty::FontStack(parley::FontStack::Single(
-                    parley::FontFamily::Named(Cow::Owned(self.family_name.clone())),
-                )));
+                builder.push_default(StyleProperty::FontFamily(
+                    parley::FontFamilyName::Named(Cow::Owned(self.family_name.clone())).into(),
+                ));
 
                 let mut layout = builder.build(value);
                 layout.break_all_lines(max_advance);
-                layout.align(
-                    max_advance,
-                    text_align.into(),
-                    parley::AlignmentOptions::default(),
-                );
+                layout.align(text_align.into(), parley::AlignmentOptions::default());
 
                 layout
             })
@@ -155,16 +151,15 @@ impl VelloFont {
         });
 
         'lines: for line in layout.lines() {
-            // Vertical line culling using Parley's LineMetrics. min_coord is the
-            // line top (including ascenders), max_coord is the bottom (including
-            // descenders). Lines emit top-to-bottom, so exceeding y_max means
-            // all remaining lines are outside (early exit).
+            // Vertical line culling using Parley's block-axis line metrics.
+            // Lines emit top-to-bottom, so exceeding y_max means all remaining
+            // lines are outside (early exit).
             if let Some((y_min, y_max)) = cull_y {
                 let lm = line.metrics();
-                if (lm.max_coord as f64) < y_min {
+                if (lm.block_max_coord as f64) < y_min {
                     continue;
                 }
-                if (lm.min_coord as f64) > y_max {
+                if (lm.block_min_coord as f64) > y_max {
                     break 'lines;
                 }
             }
@@ -191,7 +186,12 @@ impl VelloFont {
                     .transform(transform)
                     .glyph_transform(glyph_xform)
                     .font_size(font_size)
-                    .normalized_coords(run.normalized_coords())
+                    .normalized_coords(
+                        &run.normalized_coords()
+                            .iter()
+                            .map(|coord| coord.to_bits())
+                            .collect::<Vec<_>>(),
+                    )
                     .draw(
                         Fill::NonZero,
                         glyph_run.glyphs().map(|glyph| {
@@ -225,6 +225,10 @@ fn apply_font_styles(builder: &mut RangedBuilder<'_, Brush>, style: &VelloTextSt
     builder.push_default(StyleProperty::LetterSpacing(style.letter_spacing));
 }
 
+fn font_tag(tag: &str) -> parley::setting::Tag {
+    parley::setting::Tag::parse(tag).expect("font axis tags must be four ASCII characters")
+}
+
 /// Applies the variable axes to the text
 ///
 /// wght - font weight
@@ -244,85 +248,85 @@ fn apply_variable_axes(builder: &mut RangedBuilder<'_, Brush>, axes: &VelloFontA
     let mut variable_axes: Vec<FontVariation> = vec![];
 
     if let Some(weight) = axes.weight {
-        variable_axes.push(parley::swash::Setting {
-            tag: parley::swash::tag_from_str_lossy("wght"),
+        variable_axes.push(FontVariation {
+            tag: font_tag("wght"),
             value: weight,
         });
     }
 
     if let Some(width) = axes.width {
-        variable_axes.push(parley::swash::Setting {
-            tag: parley::swash::tag_from_str_lossy("wdth"),
+        variable_axes.push(FontVariation {
+            tag: font_tag("wdth"),
             value: width,
         });
     }
 
     if let Some(optical_size) = axes.optical_size {
-        variable_axes.push(parley::swash::Setting {
-            tag: parley::swash::tag_from_str_lossy("opsz"),
+        variable_axes.push(FontVariation {
+            tag: font_tag("opsz"),
             value: optical_size,
         });
     }
 
     if let Some(grade) = axes.grade {
-        variable_axes.push(parley::swash::Setting {
-            tag: parley::swash::tag_from_str_lossy("GRAD"),
+        variable_axes.push(FontVariation {
+            tag: font_tag("GRAD"),
             value: grade,
         });
     }
 
     if let Some(thick_stroke) = axes.thick_stroke {
-        variable_axes.push(parley::swash::Setting {
-            tag: parley::swash::tag_from_str_lossy("XOPQ"),
+        variable_axes.push(FontVariation {
+            tag: font_tag("XOPQ"),
             value: thick_stroke,
         });
     }
 
     if let Some(thin_stroke) = axes.thin_stroke {
-        variable_axes.push(parley::swash::Setting {
-            tag: parley::swash::tag_from_str_lossy("YOPQ"),
+        variable_axes.push(FontVariation {
+            tag: font_tag("YOPQ"),
             value: thin_stroke,
         });
     }
 
     if let Some(counter_width) = axes.counter_width {
-        variable_axes.push(parley::swash::Setting {
-            tag: parley::swash::tag_from_str_lossy("XTRA"),
+        variable_axes.push(FontVariation {
+            tag: font_tag("XTRA"),
             value: counter_width,
         });
     }
 
     if let Some(uppercase_height) = axes.uppercase_height {
-        variable_axes.push(parley::swash::Setting {
-            tag: parley::swash::tag_from_str_lossy("YTUC"),
+        variable_axes.push(FontVariation {
+            tag: font_tag("YTUC"),
             value: uppercase_height,
         });
     }
 
     if let Some(lowercase_height) = axes.lowercase_height {
-        variable_axes.push(parley::swash::Setting {
-            tag: parley::swash::tag_from_str_lossy("YTLC"),
+        variable_axes.push(FontVariation {
+            tag: font_tag("YTLC"),
             value: lowercase_height,
         });
     }
 
     if let Some(ascender_height) = axes.ascender_height {
-        variable_axes.push(parley::swash::Setting {
-            tag: parley::swash::tag_from_str_lossy("YTAS"),
+        variable_axes.push(FontVariation {
+            tag: font_tag("YTAS"),
             value: ascender_height,
         });
     }
 
     if let Some(descender_depth) = axes.descender_depth {
-        variable_axes.push(parley::swash::Setting {
-            tag: parley::swash::tag_from_str_lossy("YTDE"),
+        variable_axes.push(FontVariation {
+            tag: font_tag("YTDE"),
             value: descender_depth,
         });
     }
 
     if let Some(figure_height) = axes.figure_height {
-        variable_axes.push(parley::swash::Setting {
-            tag: parley::swash::tag_from_str_lossy("YTFI"),
+        variable_axes.push(FontVariation {
+            tag: font_tag("YTFI"),
             value: figure_height,
         });
     }
@@ -333,7 +337,7 @@ fn apply_variable_axes(builder: &mut RangedBuilder<'_, Brush>, axes: &VelloFontA
         builder.push_default(StyleProperty::FontStyle(FontStyle::Oblique(axes.slant)));
     }
 
-    builder.push_default(StyleProperty::FontVariations(FontSettings::List(
+    builder.push_default(StyleProperty::FontVariations(FontVariations::List(
         variable_axes.into(),
     )));
 }

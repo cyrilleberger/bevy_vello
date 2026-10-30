@@ -45,23 +45,23 @@ fn load_lottie(mut commands: Commands, asset_server: ResMut<AssetServer>) {
         .observe(on_pointer_leave);
 }
 
-fn on_pointer_enter(trigger: On<Pointer<Over>>, mut theme: Single<&mut Theme>) {
-    println!("Mouse entered: {}", trigger.event());
+fn on_pointer_enter(trigger: On<PointerOver>, mut theme: Single<&mut Theme>) {
+    println!("Mouse entered: {:?}", &*trigger);
     *(theme.as_mut()) = Theme::new().add("calendar", css::ORANGE.into());
 }
 
-fn on_pointer_press(trigger: On<Pointer<Press>>, mut theme: Single<&mut Theme>) {
-    println!("Mouse pressed: {}", trigger.event());
+fn on_pointer_press(trigger: On<PointerPress>, mut theme: Single<&mut Theme>) {
+    println!("Mouse pressed: {:?}", &*trigger);
     *(theme.as_mut()) = Theme::new().add("calendar", css::RED.into());
 }
 
-fn on_pointer_release(trigger: On<Pointer<Release>>, mut theme: Single<&mut Theme>) {
-    println!("Mouse released: {}", trigger.event());
+fn on_pointer_release(trigger: On<PointerRelease>, mut theme: Single<&mut Theme>) {
+    println!("Mouse released: {:?}", &*trigger);
     *(theme.as_mut()) = Theme::new().add("calendar", css::ORANGE.into());
 }
 
-fn on_pointer_leave(trigger: On<Pointer<Out>>, mut theme: Single<&mut Theme>) {
-    println!("Mouse exited ({})", trigger.event());
+fn on_pointer_leave(trigger: On<PointerOut>, mut theme: Single<&mut Theme>) {
+    println!("Mouse exited ({:?})", &*trigger);
     *(theme.as_mut()) = Theme::new().add("calendar", css::YELLOW.into());
 }
 

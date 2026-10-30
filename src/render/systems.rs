@@ -37,6 +37,59 @@ use crate::{
     render::{VelloUiRenderItem, VelloView},
 };
 
+#[cfg(feature = "lottie")]
+struct VelatoScene<'a>(&'a mut Scene);
+
+#[cfg(feature = "lottie")]
+impl velato::RenderSink for VelatoScene<'_> {
+    fn push_layer(
+        &mut self,
+        blend: impl Into<vello::peniko::BlendMode>,
+        alpha: f32,
+        transform: vello::kurbo::Affine,
+        shape: &impl vello::kurbo::Shape,
+    ) {
+        self.0
+            .push_layer(vello::peniko::Fill::NonZero, blend, alpha, transform, shape);
+    }
+
+    fn push_clip_layer(
+        &mut self,
+        transform: vello::kurbo::Affine,
+        shape: &impl vello::kurbo::Shape,
+    ) {
+        self.0
+            .push_clip_layer(vello::peniko::Fill::NonZero, transform, shape);
+    }
+
+    fn pop_layer(&mut self) {
+        self.0.pop_layer();
+    }
+
+    fn draw(
+        &mut self,
+        stroke: Option<&vello::kurbo::Stroke>,
+        transform: vello::kurbo::Affine,
+        brush: &vello::peniko::Brush,
+        shape: &impl vello::kurbo::Shape,
+    ) {
+        if let Some(stroke) = stroke {
+            self.0.stroke(stroke, transform, brush, None, shape);
+        } else {
+            self.0
+                .fill(vello::peniko::Fill::NonZero, transform, brush, None, shape);
+        }
+    }
+
+    fn draw_image(
+        &mut self,
+        _asset: &velato::model::ImageAsset,
+        _transform: vello::kurbo::Affine,
+        _alpha: f64,
+    ) {
+    }
+}
+
 /// Convert a Bevy UI clip rect to a Vello kurbo rect.
 ///
 /// `CalculatedClip` is already in physical pixels — Bevy resolves layout
@@ -331,7 +384,7 @@ pub fn render_frame(
                     *playhead as f64,
                     *affine,
                     1.0,
-                    &mut scene_buffer,
+                    &mut VelatoScene(&mut scene_buffer),
                 );
                 if *alpha < 1.0 {
                     scene_buffer.pop_layer();
@@ -460,7 +513,7 @@ pub fn render_frame(
                     *playhead as f64,
                     *affine,
                     1.0,
-                    &mut scene_buffer,
+                    &mut VelatoScene(&mut scene_buffer),
                 );
                 if *alpha < 1.0 {
                     scene_buffer.pop_layer();

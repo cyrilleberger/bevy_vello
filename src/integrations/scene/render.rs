@@ -71,7 +71,7 @@ pub fn extract_world_scenes(
                     transform: *transform,
                     scene: scene.clone(),
                 })
-                .insert(TemporaryRenderEntity);
+                .insert(TemporaryRenderEntity::default());
             n_scenes += 1;
         }
     }
@@ -133,9 +133,12 @@ pub fn extract_ui_scenes(
                     ui_node: *ui_node,
                     ui_stack_index: ui_stack_index.0,
                     ui_render_target: *ui_render_target,
-                    clip: calc_clip.map(|c| c.clip),
+                    clip: match calc_clip {
+                        Some(CalculatedClip::Rects(rects)) => rects.first().map(|clip| clip.rect),
+                        _ => None,
+                    },
                 })
-                .insert(TemporaryRenderEntity);
+                .insert(TemporaryRenderEntity::default());
             n_scenes += 1;
         }
     }

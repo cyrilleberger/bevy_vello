@@ -1,4 +1,7 @@
-use bevy::{prelude::*, render::extract_component::ExtractComponent};
+use bevy::{
+    prelude::*,
+    render::{RenderApp, extract_component::ExtractComponent},
+};
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub enum VelloExtractStep {
@@ -10,4 +13,5 @@ pub enum VelloExtractStep {
 
 /// A screenspace render target. We use a resizable fullscreen quad.
 #[derive(Component, Default, Clone, ExtractComponent)]
+#[extract_app(RenderApp)]
 pub struct VelloRenderTarget(pub Handle<Image>);

@@ -1,12 +1,15 @@
-use std::{ffi::OsStr, task::Poll};
+use std::{ffi::OsStr, sync::mpsc};
 
 use bevy::{
     asset::{AssetMetaCheck, embedded_asset},
     camera_controller::pan_camera::{PanCamera, PanCameraPlugin},
     color::palettes::css::RED,
+    picking::hover::Hovered,
     prelude::*,
+    tasks::AsyncComputeTaskPool,
+    ui::Pressed,
+    ui_widgets::Button,
 };
-use bevy_async_task::TaskRunner;
 use bevy_vello::{VelloPlugin, prelude::*};
 
 const NORMAL_BUTTON: Color = Color::srgb(0.15, 0.15, 0.15);
@@ -76,43 +79,53 @@ fn setup_button(mut commands: Commands) {
         });
 }
 
-#[allow(clippy::type_complexity)]
 fn button_system(
     mut interaction_query: Query<
-        (&Interaction, &mut BackgroundColor, &mut BorderColor),
-        (Changed<Interaction>, With<Button>),
+        (
+            Has<Pressed>,
+            &Hovered,
+            &mut BackgroundColor,
+            &mut BorderColor,
+        ),
+        With<Button>,
     >,
-    mut task_runner: TaskRunner<Option<(String, Vec<u8>)>>,
+    mut file_task: Local<Option<mpsc::Receiver<Option<(String, Vec<u8>)>>>>,
     mut commands: Commands,
     asset_server: Res<AssetServer>,
 ) {
-    for (interaction, mut color, mut border_color) in &mut interaction_query {
-        match *interaction {
-            Interaction::Pressed => {
-                *color = HOVERED_BUTTON.into();
-                border_color.set_all(RED);
+    for (pressed, hovered, mut color, mut border_color) in &mut interaction_query {
+        if pressed {
+            *color = HOVERED_BUTTON.into();
+            border_color.set_all(RED);
 
-                let fut = async move {
-                    let handle = rfd::AsyncFileDialog::new().pick_file().await?;
-                    let file_name = handle.file_name();
-                    let file_contents = handle.read().await;
-                    Some((file_name, file_contents))
-                };
-                task_runner.start(fut);
+            if file_task.is_none() {
+                let (sender, receiver) = mpsc::channel();
+                *file_task = Some(receiver);
+                AsyncComputeTaskPool::get()
+                    .spawn(async move {
+                        let file = async {
+                            let handle = rfd::AsyncFileDialog::new().pick_file().await?;
+                            let file_name = handle.file_name();
+                            let file_contents = handle.read().await;
+                            Some((file_name, file_contents))
+                        }
+                        .await;
+                        let _ = sender.send(file);
+                    })
+                    .detach();
             }
-            Interaction::Hovered => {
-                *color = HOVERED_BUTTON.into();
-                border_color.set_all(Color::WHITE);
-            }
-            Interaction::None => {
-                *color = NORMAL_BUTTON.into();
-                border_color.set_all(Color::BLACK);
-            }
+        } else if hovered.0 {
+            *color = HOVERED_BUTTON.into();
+            border_color.set_all(Color::WHITE);
+        } else {
+            *color = NORMAL_BUTTON.into();
+            border_color.set_all(Color::BLACK);
         }
     }
 
-    if let Poll::Ready(Some((file_name, file))) = task_runner.poll() {
+    if let Some(Ok(Some((file_name, file)))) = file_task.as_ref().map(|task| task.try_recv()) {
         load_file(&file_name, &file, &mut commands, &asset_server);
+        *file_task = None;
     }
 }
 

@@ -61,7 +61,9 @@ impl Theme {
             };
             let shapes = match &mut layer.content {
                 velato::model::Content::Shape(shapes) => shapes,
-                velato::model::Content::None | velato::model::Content::Instance { .. } => {
+                velato::model::Content::None
+                | velato::model::Content::Instance { .. }
+                | velato::model::Content::Image { .. } => {
                     continue 'layers;
                 }
             };

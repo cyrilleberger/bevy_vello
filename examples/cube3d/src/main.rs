@@ -15,6 +15,7 @@ use bevy::{
 use bevy_vello::{VelloPlugin, prelude::*, render::VelloRenderer};
 
 #[derive(Component, Clone, ExtractComponent)]
+#[extract_app(RenderApp)]
 pub struct VelloTarget(Handle<Image>);
 
 // Marks the main pass cube, to which the texture is applied.

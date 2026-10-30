@@ -8,6 +8,7 @@ use bevy::{
     mesh::{MeshVertexBufferLayoutRef, VertexBufferLayout},
     prelude::*,
     render::{
+        RenderApp,
         extract_component::ExtractComponent,
         render_resource::{
             AsBindGroup, RenderPipelineDescriptor, SpecializedMeshPipelineError, VertexFormat,
@@ -35,6 +36,7 @@ pub const RT_SHADER_HANDLE: Handle<Shader> = uuid_handle!("e7235b72-1181-4e18-a9
 
 /// A component that should be added to the camera that will render Vello assets.
 #[derive(Component, Debug, Clone, Copy, ExtractComponent)]
+#[extract_app(RenderApp)]
 #[require(Camera2d)]
 pub struct VelloView;
 
@@ -56,6 +58,7 @@ impl Material2d for VelloCanvasMaterial {
     }
 
     fn specialize(
+        _pipeline: &bevy::sprite_render::Material2dPipeline,
         descriptor: &mut RenderPipelineDescriptor,
         _layout: &MeshVertexBufferLayoutRef,
         _key: Material2dKey<Self>,
